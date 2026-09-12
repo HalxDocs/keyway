@@ -21,6 +21,17 @@ import (
 // production passes oidc.NewProvider, with no package-level mutable state.
 type ProviderFunc func(ctx context.Context, issuer string) (*oidc.Provider, error)
 
+// DefaultDiscover runs OIDC discovery against the live issuer.
+//
+// WHY a function declaration instead of a package variable holding
+// oidc.NewProvider: a variable would be reassignable global mutable state.
+// Callers above the normalize layer (which must never import the OIDC
+// library per the package boundary) pass this function to NewAdapter to get
+// production discovery without naming protocol types themselves.
+func DefaultDiscover(ctx context.Context, issuer string) (*oidc.Provider, error) {
+	return DiscoverProvider(ctx, issuer, oidc.NewProvider)
+}
+
 // DiscoverProvider resolves an issuer URL to a Provider via OIDC discovery.
 //
 // WHY a separate choke point instead of inlining discovery in the adapter
