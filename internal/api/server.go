@@ -15,26 +15,35 @@ import (
 	"keyway/internal/flow"
 )
 
-// Server serves the unified SSO flow endpoints.
+// Server serves the unified SSO flow endpoints plus the admin API.
+//
+// WHY one server for both: self-hosters run a single binary on localhost.
+// Flow handlers use the orchestrator; admin handlers use storage directly
+// (records, not logins) plus the orchestrator for cache invalidation and
+// connection testing.
 type Server struct {
-	flow *flow.Service
-	log  *slog.Logger
+	flow  *flow.Service
+	store flow.Storage
+	log   *slog.Logger
 }
 
-// NewServer builds the HTTP server over one flow orchestrator.
-func NewServer(flowSvc *flow.Service, logger *slog.Logger) (*Server, error) {
+// NewServer builds the HTTP server over one flow orchestrator and its store.
+func NewServer(flowSvc *flow.Service, store flow.Storage, logger *slog.Logger) (*Server, error) {
 	if flowSvc == nil {
 		return nil, fmt.Errorf("api: new server: flow service is required")
+	}
+	if store == nil {
+		return nil, fmt.Errorf("api: new server: storage is required")
 	}
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Server{flow: flowSvc, log: logger}, nil
+	return &Server{flow: flowSvc, store: store, log: logger}, nil
 }
 
-// Routes wires the five endpoints onto a stdlib multiplexer. Method-plus-
-// pattern routing covers this surface with no framework: the day the
-// endpoint count outgrows readability is the day to revisit that call.
+// Routes wires the flow and admin endpoints onto a stdlib multiplexer.
+// Method-plus-pattern routing covers this surface with no framework: the day
+// the endpoint count outgrows readability is the day to revisit that call.
 func (s *Server) Routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /authorize", s.handleAuthorize)
@@ -42,6 +51,12 @@ func (s *Server) Routes() *http.ServeMux {
 	mux.HandleFunc("GET /callback/saml/{connectionID}", s.handleSAMLCallback)
 	mux.HandleFunc("POST /callback/saml/{connectionID}", s.handleSAMLCallback)
 	mux.HandleFunc("POST /token", s.handleToken)
+	mux.HandleFunc("POST /admin/tenants", s.handleAdminCreateTenant)
+	mux.HandleFunc("GET /admin/tenants", s.handleAdminListTenants)
+	mux.HandleFunc("POST /admin/tenants/{tenantID}/connections", s.handleAdminCreateConnection)
+	mux.HandleFunc("GET /admin/tenants/{tenantID}/connections", s.handleAdminListConnections)
+	mux.HandleFunc("DELETE /admin/connections/{connectionID}", s.handleAdminDeleteConnection)
+	mux.HandleFunc("POST /admin/connections/{connectionID}/test", s.handleAdminTestConnection)
 	return mux
 }
 
