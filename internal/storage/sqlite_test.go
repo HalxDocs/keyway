@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"keyway/internal/connection"
+	"keyway/internal/flow"
 	"keyway/internal/secret"
 	"keyway/internal/tenant"
 )
@@ -64,7 +65,7 @@ func TestTenantRoundTrip(t *testing.T) {
 	if err != nil || len(tenants) != 1 {
 		t.Fatalf("ListTenants = %v, %v; want 1 tenant", tenants, err)
 	}
-	if _, err := store.GetTenant(ctx, "unknown"); err != ErrNotFound {
+	if _, err := store.GetTenant(ctx, "unknown"); err != flow.ErrNotFound {
 		t.Errorf("missing tenant: want ErrNotFound, got %v", err)
 	}
 }
@@ -117,7 +118,7 @@ func TestConnectionSecretSealed(t *testing.T) {
 	if err := store.DeleteConnection(ctx, "conn-1"); err != nil {
 		t.Fatalf("DeleteConnection: %v", err)
 	}
-	if _, err := store.GetConnection(ctx, "conn-1"); err != ErrNotFound {
+	if _, err := store.GetConnection(ctx, "conn-1"); err != flow.ErrNotFound {
 		t.Errorf("deleted connection: want ErrNotFound, got %v", err)
 	}
 }
