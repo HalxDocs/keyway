@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"keyway/internal/flow"
 	"keyway/internal/tenant"
 )
 
@@ -34,7 +35,7 @@ func (s *SQLiteStore) GetTenant(ctx context.Context, id string) (tenant.Tenant, 
 		`SELECT id, name, redirect_uris, created_at FROM tenants WHERE id = ?`, id).
 		Scan(&t.ID, &t.Name, &uris, &created)
 	if err == sql.ErrNoRows {
-		return tenant.Tenant{}, ErrNotFound
+		return tenant.Tenant{}, flow.ErrNotFound
 	}
 	if err != nil {
 		return tenant.Tenant{}, fmt.Errorf("storage: get tenant %q: %w", id, err)
