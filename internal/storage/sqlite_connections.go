@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"keyway/internal/connection"
+	"keyway/internal/flow"
 )
 
 // rowScanner abstracts *sql.Row and *sql.Rows so one mapping function
@@ -24,7 +25,9 @@ type rowScanner interface {
 // its name); only ciphertext ever reaches the database file.
 func (s *SQLiteStore) CreateConnection(ctx context.Context, c connection.Connection) error {
 	var samlMetadata, oidcIssuer, oidcClientID string
-	var sealed []byte
+	// Empty (not nil) so the NOT NULL column never receives NULL for
+	// connections without a sealable secret, e.g. secret-less clients.
+	sealed := []byte{}
 	if c.SAML != nil {
 		samlMetadata = c.SAML.MetadataXML
 	}
@@ -76,14 +79,16 @@ func (s *SQLiteStore) connectionFromRow(row rowScanner) (connection.Connection, 
 		c.SAML = &connection.SAMLConnectionConfig{MetadataXML: samlMetadata}
 	}
 	if oidcIssuer != "" {
-		plain, err := s.box.Unseal(sealed)
-		if err != nil {
-			return connection.Connection{}, fmt.Errorf("storage: unseal connection %q: %w", c.ID, err)
-		}
 		c.OIDC = &connection.OIDCConnectionConfig{
-			IssuerURL:             oidcIssuer,
-			ClientID:              oidcClientID,
-			ClientSecretEncrypted: string(plain),
+			IssuerURL: oidcIssuer,
+			ClientID:  oidcClientID,
+		}
+		if len(sealed) > 0 {
+			plain, err := s.box.Unseal(sealed)
+			if err != nil {
+				return connection.Connection{}, fmt.Errorf("storage: unseal connection %q: %w", c.ID, err)
+			}
+			c.OIDC.ClientSecretEncrypted = string(plain)
 		}
 	}
 	return c, nil
@@ -97,7 +102,7 @@ func (s *SQLiteStore) GetConnection(ctx context.Context, id string) (connection.
 	c, err := s.connectionFromRow(s.db.QueryRowContext(ctx,
 		`SELECT `+connectionColumns+` FROM connections WHERE id = ?`, id))
 	if err == sql.ErrNoRows {
-		return connection.Connection{}, ErrNotFound
+		return connection.Connection{}, flow.ErrNotFound
 	}
 	if err != nil {
 		return connection.Connection{}, fmt.Errorf("storage: get connection %q: %w", id, err)
@@ -138,7 +143,7 @@ func (s *SQLiteStore) DeleteConnection(ctx context.Context, id string) error {
 		return fmt.Errorf("storage: delete connection %q: %w", id, err)
 	}
 	if affected == 0 {
-		return ErrNotFound
+		return flow.ErrNotFound
 	}
 	return nil
 }
