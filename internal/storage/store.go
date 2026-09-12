@@ -1,26 +1,33 @@
-// Package storage defines how Keyway persists tenants and connections.
+// Package storage defines how Keyway persists tenants, connections, and
+// the ephemeral records of the unified login flow.
 //
-// WHY this package exists: the auth flow needs tenant and connection
-// records without caring whether they live in SQLite or Postgres. A narrow
-// interface keeps the flow layer testable with a fake and lets the SQLite
-// backend arrive after the protocol adapters prove themselves.
+// WHY this package exists: the auth flow needs tenant, connection, pending
+// login, and code records without caring whether they live in SQLite or
+// Postgres. A narrow interface keeps the flow layer testable with a fake
+// and lets backends change without touching login logic. Implementations
+// receive their dependencies via constructors and keep no package-level
+// mutable state.
 package storage
 
 import (
 	"context"
+	"errors"
 
 	"keyway/internal/connection"
+	"keyway/internal/flow"
 	"keyway/internal/tenant"
 )
 
-// Storage persists tenants and their IdP connections.
+// ErrNotFound signals a missing record. For auth codes it deliberately
+// covers unknown, expired, and already-consumed codes alike, so callers
+// cannot be used as an oracle for which codes ever existed.
+var ErrNotFound = errors.New("storage: record not found")
+
+// Storage persists tenants, their IdP connections, and flow records.
 //
-// WHY an interface instead of a concrete store: Phase 1 must test the OIDC
-// and SAML adapters against real IdPs before any database code exists. Code
-// that depends on this interface (admin API, auth flow) can run against an
-// in-memory fake now and a SQLite implementation later with no changes.
-// Implementations receive their dependencies via constructors and keep no
-// package-level mutable state.
+// WHY an interface instead of a concrete store: code that depends on this
+// interface (admin API, auth flow) runs against SQLite in production and a
+// fake or temp-file database in tests with no changes.
 type Storage interface {
 	// CreateTenant records a new customer boundary. It fails when the ID
 	// already exists so two tenants can never share one identity space.
@@ -48,4 +55,31 @@ type Storage interface {
 	// DeleteConnection removes one IdP config so a decommissioned IdP can
 	// no longer complete logins through its old callback URL.
 	DeleteConnection(ctx context.Context, id string) error
+
+	// SaveAuthRequest records one pending login started by /authorize.
+	// Lookup by State at callback time is how the response is bound to the
+	// exact login that produced it.
+	SaveAuthRequest(ctx context.Context, r flow.AuthRequest) error
+
+	// GetAuthRequest fetches one pending login by ID. Expiry is enforced
+	// by the flow layer, which owns the clock for login-time decisions.
+	GetAuthRequest(ctx context.Context, id string) (flow.AuthRequest, error)
+
+	// DeleteAuthRequest discards one pending login after it completes,
+	// fails, or is superseded, so stale logins cannot accumulate.
+	DeleteAuthRequest(ctx context.Context, id string) error
+
+	// IssueCode stores one single-use code carrying its verified Identity.
+	IssueCode(ctx context.Context, c flow.AuthCode) error
+
+	// ConsumeCode atomically redeems one code: a single DELETE with a
+	// RETURNING clause enforces exactly-once redemption and the expiry
+	// window in one statement, regardless of connection pool size.
+	// Unknown, expired, or already-consumed codes all report ErrNotFound.
+	ConsumeCode(ctx context.Context, code string, nowUnix int64) (flow.AuthCode, error)
+
+	// DeleteExpired removes pending logins and codes past their expiry so
+	// the database cannot fill with abandoned login attempts. It reports
+	// how many records were removed.
+	DeleteExpired(ctx context.Context, nowUnix int64) (int64, error)
 }
