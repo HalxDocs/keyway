@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS auth_requests(
   connection_id TEXT NOT NULL,
   protocol TEXT NOT NULL,
   state TEXT NOT NULL,
+  app_state TEXT NOT NULL DEFAULT '',
   nonce TEXT NOT NULL DEFAULT '',
   saml_request_id TEXT NOT NULL DEFAULT '',
   redirect_uri TEXT NOT NULL,
