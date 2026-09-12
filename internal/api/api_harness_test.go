@@ -89,7 +89,7 @@ func apiStack(t *testing.T) (*Server, flow.Storage, *flow.Service, *rsa.PrivateK
 	if err != nil {
 		t.Fatalf("NewService: %v", err)
 	}
-	server, err := NewServer(svc, nil)
+	server, err := NewServer(svc, store, nil)
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
 	}
@@ -133,4 +133,16 @@ func httptestRecord(t *testing.T, handler http.Handler, req *http.Request) *http
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	return rec
+}
+
+func doPost(t *testing.T, handler http.Handler, target, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	return httptestRecord(t, handler, req)
+}
+
+func httptestNewDelete(t *testing.T, target string) *http.Request {
+	t.Helper()
+	return httptest.NewRequest(http.MethodDelete, target, nil)
 }
