@@ -15,8 +15,9 @@ func TestAuthRequestRoundTrip(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Second)
-	want, err := flow.NewAuthRequest("acme", "conn-1", connection.ConnectionTypeOIDC,
-		"state-1", "nonce-1", "", "https://app/cb", now)
+	want, err := flow.NewAuthRequest(flow.NewAuthRequestParams{TenantID: "acme",
+		ConnectionID: "conn-1", Protocol: connection.ConnectionTypeOIDC,
+		State: "state-1", Nonce: "nonce-1", RedirectURI: "https://app/cb", Now: now})
 	if err != nil {
 		t.Fatalf("NewAuthRequest: %v", err)
 	}
@@ -33,7 +34,7 @@ func TestAuthRequestRoundTrip(t *testing.T) {
 	if err := store.DeleteAuthRequest(ctx, want.ID); err != nil {
 		t.Fatalf("DeleteAuthRequest: %v", err)
 	}
-	if _, err := store.GetAuthRequest(ctx, want.ID); err != ErrNotFound {
+	if _, err := store.GetAuthRequest(ctx, want.ID); err != flow.ErrNotFound {
 		t.Errorf("deleted request: want ErrNotFound, got %v", err)
 	}
 }
@@ -56,10 +57,10 @@ func TestConsumeCodeExactlyOnce(t *testing.T) {
 	if got.Identity.Email != "ada@example.com" {
 		t.Errorf("consumed identity = %+v", got.Identity)
 	}
-	if _, err := store.ConsumeCode(ctx, code.Code, now.Unix()); err != ErrNotFound {
+	if _, err := store.ConsumeCode(ctx, code.Code, now.Unix()); err != flow.ErrNotFound {
 		t.Errorf("second redemption: want ErrNotFound, got %v", err)
 	}
-	if _, err := store.ConsumeCode(ctx, "no-such-code", now.Unix()); err != ErrNotFound {
+	if _, err := store.ConsumeCode(ctx, "no-such-code", now.Unix()); err != flow.ErrNotFound {
 		t.Errorf("unknown code: want ErrNotFound, got %v", err)
 	}
 }
@@ -79,11 +80,13 @@ func TestExpiredRecordsRejectedAndSwept(t *testing.T) {
 	if err := store.IssueCode(ctx, expiredCode); err != nil {
 		t.Fatalf("IssueCode: %v", err)
 	}
-	if _, err := store.ConsumeCode(ctx, "expired-code", time.Now().Unix()); err != ErrNotFound {
+	if _, err := store.ConsumeCode(ctx, "expired-code", time.Now().Unix()); err != flow.ErrNotFound {
 		t.Errorf("expired code: want ErrNotFound, got %v", err)
 	}
-	expiredReq, err := flow.NewAuthRequest("acme", "conn-1", connection.ConnectionTypeSAML,
-		"relay-1", "", "req-1", "https://app/cb", past.Add(-time.Hour))
+	expiredReq, err := flow.NewAuthRequest(flow.NewAuthRequestParams{TenantID: "acme",
+		ConnectionID: "conn-1", Protocol: connection.ConnectionTypeSAML,
+		State: "relay-1", SAMLRequestID: "req-1", RedirectURI: "https://app/cb",
+		Now: past.Add(-time.Hour)})
 	if err != nil {
 		t.Fatalf("NewAuthRequest: %v", err)
 	}
