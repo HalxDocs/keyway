@@ -40,6 +40,11 @@ type AuthRequest struct {
 	// for SAML, the OAuth state parameter for OIDC.
 	State string
 
+	// AppState is the application's own state parameter from /authorize,
+	// returned verbatim with the code so the app can bind the login to its
+	// session. Keyway never interprets it; it only round-trips it.
+	AppState string
+
 	// Nonce is the OIDC nonce for this login. Required when Protocol is
 	// oidc; an accidentally-empty nonce fails validation at creation.
 	Nonce string
@@ -56,23 +61,41 @@ type AuthRequest struct {
 	CreatedAt time.Time
 }
 
+// NewAuthRequestParams carries AuthRequest construction inputs.
+//
+// WHY a struct instead of positional strings: seven same-typed parameters
+// in a row invite silent swaps (nonce for request ID) that would weaken
+// replay protection while compiling cleanly. Named fields make the call
+// site self-checking.
+type NewAuthRequestParams struct {
+	TenantID      string
+	ConnectionID  string
+	Protocol      connection.ConnectionType
+	State         string
+	AppState      string
+	Nonce         string
+	SAMLRequestID string
+	RedirectURI   string
+	Now           time.Time
+}
+
 // NewAuthRequest builds a validated pending login: the ID is generated, the
 // expiry is derived from now plus RequestTTL, and the protocol's required
 // replay-protection fields must be present or construction fails loudly.
-func NewAuthRequest(tenantID, connectionID string, protocol connection.ConnectionType, state, nonce, samlRequestID, redirectURI string, now time.Time) (AuthRequest, error) {
-	if tenantID == "" || connectionID == "" {
+func NewAuthRequest(p NewAuthRequestParams) (AuthRequest, error) {
+	if p.TenantID == "" || p.ConnectionID == "" {
 		return AuthRequest{}, fmt.Errorf("flow: new auth request: tenant and connection are required")
 	}
-	if protocol != connection.ConnectionTypeSAML && protocol != connection.ConnectionTypeOIDC {
-		return AuthRequest{}, fmt.Errorf("flow: new auth request: unknown protocol %q", protocol)
+	if p.Protocol != connection.ConnectionTypeSAML && p.Protocol != connection.ConnectionTypeOIDC {
+		return AuthRequest{}, fmt.Errorf("flow: new auth request: unknown protocol %q", p.Protocol)
 	}
-	if state == "" || redirectURI == "" {
+	if p.State == "" || p.RedirectURI == "" {
 		return AuthRequest{}, fmt.Errorf("flow: new auth request: state and redirect URI are required")
 	}
-	if protocol == connection.ConnectionTypeOIDC && nonce == "" {
+	if p.Protocol == connection.ConnectionTypeOIDC && p.Nonce == "" {
 		return AuthRequest{}, fmt.Errorf("flow: new auth request: OIDC logins require a nonce")
 	}
-	if protocol == connection.ConnectionTypeSAML && samlRequestID == "" {
+	if p.Protocol == connection.ConnectionTypeSAML && p.SAMLRequestID == "" {
 		return AuthRequest{}, fmt.Errorf("flow: new auth request: SAML logins require a request ID")
 	}
 	id := make([]byte, 16)
@@ -81,14 +104,15 @@ func NewAuthRequest(tenantID, connectionID string, protocol connection.Connectio
 	}
 	return AuthRequest{
 		ID:            hex.EncodeToString(id),
-		TenantID:      tenantID,
-		ConnectionID:  connectionID,
-		Protocol:      protocol,
-		State:         state,
-		Nonce:         nonce,
-		SAMLRequestID: samlRequestID,
-		RedirectURI:   redirectURI,
-		ExpiresAt:     now.Add(RequestTTL),
-		CreatedAt:     now,
+		TenantID:      p.TenantID,
+		ConnectionID:  p.ConnectionID,
+		Protocol:      p.Protocol,
+		State:         p.State,
+		AppState:      p.AppState,
+		Nonce:         p.Nonce,
+		SAMLRequestID: p.SAMLRequestID,
+		RedirectURI:   p.RedirectURI,
+		ExpiresAt:     p.Now.Add(RequestTTL),
+		CreatedAt:     p.Now,
 	}, nil
 }
