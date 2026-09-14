@@ -51,6 +51,7 @@ func (s *Server) Routes() *http.ServeMux {
 	mux.HandleFunc("GET /callback/saml/{connectionID}", s.handleSAMLCallback)
 	mux.HandleFunc("POST /callback/saml/{connectionID}", s.handleSAMLCallback)
 	mux.HandleFunc("POST /token", s.handleToken)
+	mux.HandleFunc("GET /saml/metadata/{connectionID}", s.handleSPMetadata)
 	mux.HandleFunc("POST /admin/tenants", s.handleAdminCreateTenant)
 	mux.HandleFunc("GET /admin/tenants", s.handleAdminListTenants)
 	mux.HandleFunc("POST /admin/tenants/{tenantID}/connections", s.handleAdminCreateConnection)
