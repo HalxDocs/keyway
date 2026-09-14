@@ -43,7 +43,7 @@ func (s *Service) getSAMLAdapter(conn connection.Connection) (*saml.Adapter, err
 	}
 	adapter, err := saml.NewAdapter(conn, saml.SPConfig{
 		EntityID:    s.spEntityID,
-		MetadataURL: s.baseURL + "/saml/metadata",
+		MetadataURL: s.baseURL + "/saml/metadata/" + conn.ID,
 		ACSURL:      s.samlCallbackURL(conn.ID),
 		Key:         s.spKey,
 		Certificate: s.spCert,
