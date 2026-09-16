@@ -1,0 +1,12 @@
+# Local build output — single static binary, built per machine.
+keyway
+keyway.exe
+
+# Local operator state — sealed secrets + throwaway test tenants.
+*.db
+*.db-shm
+*.db-wal
+
+# Stable SP signing identity — generated per deployment, never committed.
+sp.key
+sp.crt
