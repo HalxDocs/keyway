@@ -64,6 +64,24 @@ curl -X POST http://127.0.0.1:8080/token \
 Admin API mirrors the CLI at `/admin/*` (tenants, connections, `POST
 /admin/connections/{id}/test`). Connection responses never include secrets.
 
+## Tested with Auth0
+
+End-to-end login verified Sep 2026 against an Auth0 EU dev tenant:
+OIDC discovery, `/authorize` redirect, hosted login, callback, and
+`POST /token` returning the normalized identity.
+
+```sh
+./keyway status --db ./keyway.db
+# tenants: 1
+# connections: 1
+# storage: sqlite (45056 bytes)
+
+./keyway connection test --id conn-<id> --db ./keyway.db
+# connection "conn-<id>": OIDC discovery ok
+```
+
+![Auth0 hosted login continuing to keyway](docs/auth0-login.png)
+
 ## Security notes
 
 - SAML signatures verified against IdP metadata on every response;
