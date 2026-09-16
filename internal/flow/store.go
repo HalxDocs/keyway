@@ -48,6 +48,12 @@ type Storage interface {
 	// no longer complete logins through its old callback URL.
 	DeleteConnection(ctx context.Context, id string) error
 
+	// UpdateConnectionStatus flips one connection's lifecycle state (e.g.
+	// untested to active after a dry-run passes). Only active and disabled
+	// are legal targets: there is no path back to untested, so a tested
+	// connection can never silently regress to pre-test state.
+	UpdateConnectionStatus(ctx context.Context, id string, status connection.ConnectionStatus) error
+
 	// SaveAuthRequest records one pending login started by /authorize.
 	// Lookup by State at callback time is how the response is bound to the
 	// exact login that produced it.

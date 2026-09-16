@@ -122,3 +122,45 @@ func TestConnectionSecretSealed(t *testing.T) {
 		t.Errorf("deleted connection: want ErrNotFound, got %v", err)
 	}
 }
+
+func TestUpdateConnectionStatus(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	if err := store.CreateTenant(ctx, tenant.Tenant{ID: "acme", Name: "Acme", CreatedAt: time.Now()}); err != nil {
+		t.Fatalf("CreateTenant: %v", err)
+	}
+	conn := connection.Connection{
+		ID:           "conn-1",
+		TenantID:     "acme",
+		Type:         connection.ConnectionTypeOIDC,
+		OIDC:         &connection.OIDCConnectionConfig{IssuerURL: "https://issuer.test", ClientID: "c1"},
+		AttributeMap: connection.AttributeMap{EmailClaim: "email"},
+		Status:       connection.ConnectionStatusUntested,
+		CreatedAt:    time.Now().UTC().Truncate(time.Second),
+	}
+	if err := store.CreateConnection(ctx, conn); err != nil {
+		t.Fatalf("CreateConnection: %v", err)
+	}
+	if err := store.UpdateConnectionStatus(ctx, "conn-1", connection.ConnectionStatusActive); err != nil {
+		t.Fatalf("UpdateConnectionStatus to active: %v", err)
+	}
+	got, err := store.GetConnection(ctx, "conn-1")
+	if err != nil {
+		t.Fatalf("GetConnection: %v", err)
+	}
+	if got.Status != connection.ConnectionStatusActive {
+		t.Errorf("status = %q, want %q", got.Status, connection.ConnectionStatusActive)
+	}
+	if err := store.UpdateConnectionStatus(ctx, "conn-1", connection.ConnectionStatusDisabled); err != nil {
+		t.Fatalf("UpdateConnectionStatus to disabled: %v", err)
+	}
+	if err := store.UpdateConnectionStatus(ctx, "conn-1", connection.ConnectionStatusUntested); err == nil {
+		t.Errorf("regress to untested: expected rejection, got nil error")
+	}
+	if err := store.UpdateConnectionStatus(ctx, "conn-1", "bogus"); err == nil {
+		t.Errorf("bogus status: expected rejection, got nil error")
+	}
+	if err := store.UpdateConnectionStatus(ctx, "nope", connection.ConnectionStatusActive); err != flow.ErrNotFound {
+		t.Errorf("missing connection: want ErrNotFound, got %v", err)
+	}
+}

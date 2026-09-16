@@ -147,3 +147,27 @@ func (s *SQLiteStore) DeleteConnection(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+// UpdateConnectionStatus flips one connection's lifecycle state. Only active
+// and disabled are legal targets: untested is the creation state and must
+// never be re-entered, so a tested connection cannot silently regress.
+func (s *SQLiteStore) UpdateConnectionStatus(ctx context.Context, id string, status connection.ConnectionStatus) error {
+	switch status {
+	case connection.ConnectionStatusActive, connection.ConnectionStatusDisabled:
+	default:
+		return fmt.Errorf("storage: update connection %q status: status must be %q or %q",
+			id, connection.ConnectionStatusActive, connection.ConnectionStatusDisabled)
+	}
+	result, err := s.db.ExecContext(ctx, `UPDATE connections SET status = ? WHERE id = ?`, string(status), id)
+	if err != nil {
+		return fmt.Errorf("storage: update connection %q status: %w", id, err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("storage: update connection %q status: %w", id, err)
+	}
+	if affected == 0 {
+		return flow.ErrNotFound
+	}
+	return nil
+}
