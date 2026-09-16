@@ -82,6 +82,29 @@ func ConnectionDelete(store flow.Storage, id string) (string, error) {
 	return fmt.Sprintf("connection %q deleted", id), nil
 }
 
+// ConnectionActivate approves one tested connection for logins: the only
+// legal source state is untested, so a disabled connection (incident, key
+// rotation) can never be re-enabled without operator review outside this
+// command. Activating an already-active connection succeeds idempotently.
+func ConnectionActivate(store flow.Storage, id string) (string, error) {
+	ctx := context.Background()
+	conn, err := store.GetConnection(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("cli: connection activate: %w", err)
+	}
+	switch conn.Status {
+	case connection.ConnectionStatusActive:
+		return fmt.Sprintf("connection %q already active", id), nil
+	case connection.ConnectionStatusUntested:
+	default:
+		return "", fmt.Errorf("cli: connection activate: connection %q is %q, not untested", id, conn.Status)
+	}
+	if err := store.UpdateConnectionStatus(ctx, id, connection.ConnectionStatusActive); err != nil {
+		return "", fmt.Errorf("cli: connection activate: %w", err)
+	}
+	return fmt.Sprintf("connection %q activated", id), nil
+}
+
 func newConnID() (string, error) {
 	raw := make([]byte, 8)
 	if _, err := rand.Read(raw); err != nil {
