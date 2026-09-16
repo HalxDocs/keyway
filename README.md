@@ -75,6 +75,10 @@ Admin API mirrors the CLI at `/admin/*` (tenants, connections, `POST
   and tokens never logged.
 - Admin API has no token in v1 — it binds localhost by default; do not
   expose it beyond loopback without a proxy in front.
+- Stable SP identity: generate `sp.key`/`sp.crt` once per deployment and
+  pass `--sp-key`/`--sp-cert` to `keyway start`; without them the server
+  mints an ephemeral identity on every boot. Keep the key `0600` and out
+  of version control.
 
 ## Layout
 
