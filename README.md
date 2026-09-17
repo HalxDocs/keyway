@@ -85,6 +85,19 @@ OIDC discovery, `/authorize` redirect, hosted login, callback, and
 
 ![Terminal: status and OIDC discovery ok](docs/terminal-proof.png)
 
+## Demo app
+
+`examples/demo-sso` is the smallest Keyway-integrated app: home page with
+a login link, callback that verifies `state` and exchanges the code via
+`pkg/client`. Tenant `acme` already allowlists its callback URL.
+
+```sh
+./keyway start --db ./keyway.db --base-url http://127.0.0.1:8080 \
+  --sp-key ./sp.key --sp-cert ./sp.crt &
+go run ./examples/demo-sso
+# open http://localhost:3000 and click Log in with SSO
+```
+
 ## Security notes
 
 - SAML signatures verified against IdP metadata on every response;
