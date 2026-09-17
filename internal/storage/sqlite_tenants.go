@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"time"
 
 	"keyway/internal/flow"
@@ -72,4 +73,66 @@ func (s *SQLiteStore) ListTenants(ctx context.Context) ([]tenant.Tenant, error) 
 		return nil, fmt.Errorf("storage: list tenants: %w", err)
 	}
 	return tenants, nil
+}
+
+// AddTenantRedirectURI appends one callback URL to a tenant's allowlist.
+// The URI must be absolute (exact-match allowlist, same rule as login time)
+// and duplicates are ignored: the allowlist is a set, not a log.
+func (s *SQLiteStore) AddTenantRedirectURI(ctx context.Context, tenantID, uri string) error {
+	if _, err := url.ParseRequestURI(uri); err != nil {
+		return fmt.Errorf("storage: add redirect URI: invalid URI %q: %w", uri, err)
+	}
+	t, err := s.GetTenant(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	for _, existing := range t.AllowedRedirectURIs {
+		if existing == uri {
+			return nil
+		}
+	}
+	return s.setTenantRedirectURIs(ctx, tenantID, append(t.AllowedRedirectURIs, uri))
+}
+
+// RemoveTenantRedirectURI drops one callback URL from a tenant's allowlist.
+func (s *SQLiteStore) RemoveTenantRedirectURI(ctx context.Context, tenantID, uri string) error {
+	t, err := s.GetTenant(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	kept := t.AllowedRedirectURIs[:0]
+	found := false
+	for _, existing := range t.AllowedRedirectURIs {
+		if existing == uri {
+			found = true
+			continue
+		}
+		kept = append(kept, existing)
+	}
+	if !found {
+		return fmt.Errorf("storage: remove redirect URI: %q is not allowlisted for tenant %q", uri, tenantID)
+	}
+	if kept == nil {
+		kept = []string{}
+	}
+	return s.setTenantRedirectURIs(ctx, tenantID, kept)
+}
+
+func (s *SQLiteStore) setTenantRedirectURIs(ctx context.Context, tenantID string, uris []string) error {
+	raw, err := json.Marshal(uris)
+	if err != nil {
+		return fmt.Errorf("storage: set redirect URIs: %w", err)
+	}
+	result, err := s.db.ExecContext(ctx, `UPDATE tenants SET redirect_uris = ? WHERE id = ?`, string(raw), tenantID)
+	if err != nil {
+		return fmt.Errorf("storage: set redirect URIs for tenant %q: %w", tenantID, err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("storage: set redirect URIs for tenant %q: %w", tenantID, err)
+	}
+	if affected == 0 {
+		return flow.ErrNotFound
+	}
+	return nil
 }

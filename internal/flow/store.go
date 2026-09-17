@@ -33,6 +33,16 @@ type Storage interface {
 	// ListTenants enumerates customers for the admin API and status output.
 	ListTenants(ctx context.Context) ([]tenant.Tenant, error)
 
+	// AddTenantRedirectURI appends one callback URL to a tenant's allowlist.
+	// Adding a URL that is already allowlisted succeeds idempotently, so
+	// retries and overlapping automation never fail loudly.
+	AddTenantRedirectURI(ctx context.Context, tenantID, uri string) error
+
+	// RemoveTenantRedirectURI drops one callback URL from a tenant's
+	// allowlist. Removing a URL that is not allowlisted fails loudly, so
+	// a typo cannot silently leave the allowlist wider than intended.
+	RemoveTenantRedirectURI(ctx context.Context, tenantID, uri string) error
+
 	// CreateConnection records one IdP config under its owning tenant. It
 	// fails when the ID already exists so callback URLs stay unambiguous.
 	CreateConnection(ctx context.Context, c connection.Connection) error

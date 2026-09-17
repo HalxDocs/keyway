@@ -70,6 +70,50 @@ func TestTenantRoundTrip(t *testing.T) {
 	}
 }
 
+func TestTenantRedirectURIs(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	if err := store.CreateTenant(ctx, tenant.Tenant{ID: "acme", Name: "Acme", CreatedAt: time.Now()}); err != nil {
+		t.Fatalf("CreateTenant: %v", err)
+	}
+	const uri = "https://app.acme.example/callback"
+	if err := store.AddTenantRedirectURI(ctx, "acme", uri); err != nil {
+		t.Fatalf("AddTenantRedirectURI: %v", err)
+	}
+	if err := store.AddTenantRedirectURI(ctx, "acme", uri); err != nil {
+		t.Fatalf("re-add (idempotent): %v", err)
+	}
+	got, err := store.GetTenant(ctx, "acme")
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if len(got.AllowedRedirectURIs) != 1 || got.AllowedRedirectURIs[0] != uri {
+		t.Errorf("allowlist = %v, want [%s]", got.AllowedRedirectURIs, uri)
+	}
+	if !got.IsRedirectAllowed(uri) {
+		t.Errorf("IsRedirectAllowed(%q) = false, want true", uri)
+	}
+	if err := store.AddTenantRedirectURI(ctx, "acme", "not a uri"); err == nil {
+		t.Errorf("invalid URI: expected rejection, got nil error")
+	}
+	if err := store.AddTenantRedirectURI(ctx, "nope", uri); err != flow.ErrNotFound {
+		t.Errorf("missing tenant: want ErrNotFound, got %v", err)
+	}
+	if err := store.RemoveTenantRedirectURI(ctx, "acme", "https://other.example/cb"); err == nil {
+		t.Errorf("remove missing URI: expected rejection, got nil error")
+	}
+	if err := store.RemoveTenantRedirectURI(ctx, "acme", uri); err != nil {
+		t.Fatalf("RemoveTenantRedirectURI: %v", err)
+	}
+	got, err = store.GetTenant(ctx, "acme")
+	if err != nil {
+		t.Fatalf("GetTenant: %v", err)
+	}
+	if len(got.AllowedRedirectURIs) != 0 {
+		t.Errorf("allowlist = %v, want empty", got.AllowedRedirectURIs)
+	}
+}
+
 func TestConnectionSecretSealed(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
