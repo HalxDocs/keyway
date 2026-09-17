@@ -82,6 +82,8 @@ OIDC discovery, `/authorize` redirect, hosted login, callback, and
 
 ![Auth0 hosted login continuing to keyway](docs/auth0-login.png)
 
+![Terminal: status and OIDC discovery ok](docs/terminal-proof.png)
+
 ## Security notes
 
 - SAML signatures verified against IdP metadata on every response;
