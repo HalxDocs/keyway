@@ -1,0 +1,34 @@
+# Production overlay: adds a Caddy edge with free automatic HTTPS in front
+# of the base stack. Nothing else changes shape — KEYWAY_BASE_URL and
+# DEMO_REDIRECT are already env-driven in the base file, so going public is
+# a config step, not a rebuild:
+#
+#   KEYWAY_BASE_URL=https://sso.example.com \
+#   DEMO_REDIRECT=https://app.example.com/callback \
+#   KEYWAY_HOST=sso.example.com DEMO_HOST=app.example.com \
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# After switching base URL, every connection's callback URL changes with
+# it, so add the new https://<host>/callback/... URLs in the IdP dashboard
+# (Auth0: app Allowed Callback URLs + SAML2 addon callback) before testing.
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    environment:
+      - KEYWAY_HOST=${KEYWAY_HOST:?KEYWAY_HOST is required}
+      - DEMO_HOST=${DEMO_HOST:?DEMO_HOST is required}
+    depends_on:
+      - keyway
+      - demo
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:

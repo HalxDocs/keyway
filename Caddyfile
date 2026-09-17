@@ -1,0 +1,12 @@
+# Production edge: Caddy terminates TLS with free automatic certificates
+# and forwards to the compose services by container name. Hostnames come
+# from the environment (KEYWAY_HOST, DEMO_HOST) so this file never carries
+# deployment-specific names. HTTP-01 challenges need ports 80/443 reachable
+# from the internet; the app ports stay loopback-bound (see compose base).
+{$KEYWAY_HOST} {
+	reverse_proxy keyway:8080
+}
+
+{$DEMO_HOST} {
+	reverse_proxy demo:3000
+}
