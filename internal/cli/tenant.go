@@ -38,3 +38,29 @@ func TenantList(store flow.Storage) (string, error) {
 	}
 	return strings.Join(lines, "\n"), nil
 }
+
+// TenantRedirectAdd allowlists one more application callback URL for a
+// tenant. The exact-match rule is enforced in storage, so a typo'd or
+// relative URI fails here instead of at a user's login attempt.
+func TenantRedirectAdd(store flow.Storage, tenantID, uri string) (string, error) {
+	if tenantID == "" || uri == "" {
+		return "", fmt.Errorf("cli: tenant redirect add: tenant ID and URI are required")
+	}
+	if err := store.AddTenantRedirectURI(context.Background(), tenantID, uri); err != nil {
+		return "", fmt.Errorf("cli: tenant redirect add: %w", err)
+	}
+	return fmt.Sprintf("tenant %q: allowlisted %q", tenantID, uri), nil
+}
+
+// TenantRedirectRemove drops one application callback URL from a tenant's
+// allowlist. Removing a URL that was never allowlisted fails loudly, so
+// the operator notices the typo instead of assuming the allowlist shrank.
+func TenantRedirectRemove(store flow.Storage, tenantID, uri string) (string, error) {
+	if tenantID == "" || uri == "" {
+		return "", fmt.Errorf("cli: tenant redirect remove: tenant ID and URI are required")
+	}
+	if err := store.RemoveTenantRedirectURI(context.Background(), tenantID, uri); err != nil {
+		return "", fmt.Errorf("cli: tenant redirect remove: %w", err)
+	}
+	return fmt.Sprintf("tenant %q: removed %q", tenantID, uri), nil
+}

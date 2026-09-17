@@ -64,6 +64,40 @@ func TestTenantCommands(t *testing.T) {
 	}
 }
 
+func TestTenantRedirectCommands(t *testing.T) {
+	store := testCLIStore(t)
+	if _, err := TenantCreate(store, "acme", "Acme", nil); err != nil {
+		t.Fatalf("TenantCreate: %v", err)
+	}
+	const uri = "https://app.acme.example/callback"
+	out, err := TenantRedirectAdd(store, "acme", uri)
+	if err != nil {
+		t.Fatalf("TenantRedirectAdd: %v", err)
+	}
+	if !strings.Contains(out, uri) {
+		t.Errorf("output = %q", out)
+	}
+	if _, err := TenantRedirectAdd(store, "acme", uri); err != nil {
+		t.Fatalf("re-add (idempotent): %v", err)
+	}
+	if _, err := TenantRedirectAdd(store, "acme", ""); err == nil {
+		t.Errorf("empty URI: expected rejection, got nil error")
+	}
+	if _, err := TenantRedirectAdd(store, "nope", uri); err == nil {
+		t.Errorf("unknown tenant: expected rejection, got nil error")
+	}
+	removed, err := TenantRedirectRemove(store, "acme", uri)
+	if err != nil {
+		t.Fatalf("TenantRedirectRemove: %v", err)
+	}
+	if !strings.Contains(removed, uri) {
+		t.Errorf("output = %q", removed)
+	}
+	if _, err := TenantRedirectRemove(store, "acme", uri); err == nil {
+		t.Errorf("remove missing URI: expected rejection, got nil error")
+	}
+}
+
 func TestConnectionAddValidates(t *testing.T) {
 	store := testCLIStore(t)
 	ctx := context.Background()
