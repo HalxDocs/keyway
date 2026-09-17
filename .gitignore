@@ -11,3 +11,6 @@
 # Stable SP signing identity — generated per deployment, never committed.
 sp.key
 sp.crt
+
+# Local secrets for compose — copy .env.example, never commit.
+.env
