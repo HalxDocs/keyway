@@ -105,6 +105,12 @@ explicitly (otherwise `/authorize` refuses to guess):
 go run ./examples/demo-sso --connection conn-<id>
 ```
 
+The demo keeps two Keyway addresses: `--keyway` (public, embedded in the
+login link the browser follows) and `--keyway-internal` (server-side code
+exchange, defaults to `--keyway`). They coincide for bare-metal dev and
+differ in compose, where the browser uses published localhost while the
+demo dials `http://keyway:8080`.
+
 ## Docker
 
 Dev stack (Keyway + demo, loopback-bound ports, same URLs as above):

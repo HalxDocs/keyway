@@ -41,7 +41,12 @@ services:
     image: keyway:local
     entrypoint: ["/demo-sso"]
     command:
-      - --keyway=http://keyway:8080
+      # --keyway is the browser-facing address embedded in login links;
+      # --keyway-internal is the server-side address for code exchange over
+      # the compose network. One flag for both would hand the browser a
+      # container-internal hostname it cannot resolve.
+      - --keyway=http://127.0.0.1:8080
+      - --keyway-internal=http://keyway:8080
       - --addr=0.0.0.0:3000
       - --tenant=${DEMO_TENANT:-acme}
       - --redirect=${DEMO_REDIRECT:-http://localhost:3000/callback}
