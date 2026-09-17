@@ -46,6 +46,7 @@ func NewServer(flowSvc *flow.Service, store flow.Storage, logger *slog.Logger) (
 // the endpoint count outgrows readability is the day to revisit that call.
 func (s *Server) Routes() *http.ServeMux {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.HandleFunc("GET /authorize", s.handleAuthorize)
 	mux.HandleFunc("GET /callback/oidc/{connectionID}", s.handleOIDCCallback)
 	mux.HandleFunc("GET /callback/saml/{connectionID}", s.handleSAMLCallback)
