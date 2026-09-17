@@ -20,7 +20,9 @@ services:
       - --sp-key=/data/sp.key
       - --sp-cert=/data/sp.crt
     ports:
-      - "8080:8080"
+      # Loopback-bound: the browser reaches these on the host, but a
+      # production VM exposes nothing directly — traffic goes via Caddy.
+      - "127.0.0.1:8080:8080"
     volumes:
       - keyway-data:/data
       - ./sp.key:/data/sp.key:ro
@@ -45,7 +47,7 @@ services:
       - --redirect=${DEMO_REDIRECT:-http://localhost:3000/callback}
       - --connection=${DEMO_CONNECTION_ID:-}
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       keyway:
         condition: service_healthy
