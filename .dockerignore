@@ -1,0 +1,16 @@
+# Secrets and local operator state must never enter the image.
+*.db
+*.db-shm
+*.db-wal
+sp.key
+sp.crt
+.env
+keyway
+keyway.exe
+keyway.exe~
+
+# Build context hygiene.
+.git/
+docs/
+tmp-reseal/
+tmp-spgen/
