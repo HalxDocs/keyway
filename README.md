@@ -105,6 +105,47 @@ explicitly (otherwise `/authorize` refuses to guess):
 go run ./examples/demo-sso --connection conn-<id>
 ```
 
+## Docker
+
+Dev stack (Keyway + demo, loopback-bound ports, same URLs as above):
+
+```sh
+cp .env.example .env  # then set KEYWAY_MASTER_KEY (keyway keygen)
+docker compose up -d --build
+```
+
+Run admin commands against the container database (the master key must
+reach the exec environment explicitly):
+
+```sh
+docker compose exec -e KEYWAY_MASTER_KEY=$KEYWAY_MASTER_KEY \
+  keyway /keyway status --db /data/keyway.db
+```
+
+Migrate an existing local database — sealed secrets travel with the same
+master key, and the SP key/cert are already bind-mounted read-only:
+
+```sh
+docker compose cp ./keyway.db keyway:/data/keyway.db
+docker compose restart keyway
+```
+
+Production, zero-cost path: any VM with a public IP plus DNS A records.
+Caddy terminates TLS with free automatic certificates; going public is
+config only — the services are unchanged:
+
+```sh
+KEYWAY_BASE_URL=https://sso.example.com \
+DEMO_REDIRECT=https://app.example.com/callback \
+KEYWAY_HOST=sso.example.com DEMO_HOST=app.example.com \
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+A new base URL changes every connection's callback URL, so add the new
+`https://<host>/callback/...` URLs in the IdP dashboard first (Auth0 app
+Allowed Callback URLs plus the SAML2 addon callback). `GET /healthz` is a
+dependency-free liveness probe for orchestrators.
+
 ## Security notes
 
 - SAML signatures verified against IdP metadata on every response;
