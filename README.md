@@ -120,12 +120,11 @@ cp .env.example .env  # then set KEYWAY_MASTER_KEY (keyway keygen)
 docker compose up -d --build
 ```
 
-Run admin commands against the container database (the master key must
-reach the exec environment explicitly):
+Run admin commands against the container database (exec inherits the
+compose environment, including the master key from `.env`):
 
 ```sh
-docker compose exec -e KEYWAY_MASTER_KEY=$KEYWAY_MASTER_KEY \
-  keyway /keyway status --db /data/keyway.db
+docker compose exec keyway /keyway status --db /data/keyway.db
 ```
 
 Migrate an existing local database — sealed secrets travel with the same
