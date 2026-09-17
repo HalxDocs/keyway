@@ -25,27 +25,47 @@ import (
 // Keyway refuses /authorize before any IdP is involved. connectionID picks
 // the IdP and is required when the tenant has more than one active
 // connection; it stays empty for single-connection tenants.
+//
+// Two Keyway addresses exist because login spans two networks: authURL is
+// the public address embedded in the login link the *browser* follows, while
+// exchangeURL is the server-side address this process POSTs the code to.
+// They coincide for bare-metal dev and differ in compose, where the browser
+// reaches Keyway via published localhost but the demo reaches it as
+// http://keyway:8080. One flag for both would hand the browser a
+// container-internal hostname it cannot resolve.
 type App struct {
-	sdk          *client.Client
-	tenantID     string
+	authURL     *client.Client
+	exchangeURL *client.Client
+	tenantID    string
 	redirectURI  string
 	connectionID string
 }
 
 func main() {
-	keywayURL := flag.String("keyway", "http://127.0.0.1:8080", "Keyway base URL")
+	keywayURL := flag.String("keyway", "http://127.0.0.1:8080", "public Keyway base URL for login links (must reach a browser)")
+	internalURL := flag.String("keyway-internal", "", "server-side Keyway base URL for code exchange (defaults to --keyway)")
 	addr := flag.String("addr", "127.0.0.1:3000", "listen address")
 	tenantID := flag.String("tenant", "acme", "Keyway tenant handle")
 	redirectURI := flag.String("redirect", "http://localhost:3000/callback", "app callback URL (must be allowlisted)")
 	connectionID := flag.String("connection", "", "connection ID (required when the tenant has several active connections)")
 	flag.Parse()
 
-	sdk, err := client.New(*keywayURL)
+	authURL, err := client.New(*keywayURL)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "demo-sso:", err)
 		os.Exit(1)
 	}
-	app := &App{sdk: sdk, tenantID: *tenantID, redirectURI: *redirectURI, connectionID: *connectionID}
+	exchangeBase := *internalURL
+	if exchangeBase == "" {
+		exchangeBase = *keywayURL
+	}
+	exchangeURL, err := client.New(exchangeBase)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "demo-sso:", err)
+		os.Exit(1)
+	}
+	app := &App{authURL: authURL, exchangeURL: exchangeURL,
+		tenantID: *tenantID, redirectURI: *redirectURI, connectionID: *connectionID}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", app.handleHome)
 	mux.HandleFunc("GET /callback", app.handleCallback)
@@ -65,7 +85,7 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "cannot start login", http.StatusInternalServerError)
 		return
 	}
-	loginURL, err := a.sdk.AuthURL(a.tenantID, a.redirectURI, state, a.connectionID)
+	loginURL, err := a.authURL.AuthURL(a.tenantID, a.redirectURI, state, a.connectionID)
 	if err != nil {
 		http.Error(w, "cannot start login", http.StatusInternalServerError)
 		return
@@ -86,7 +106,7 @@ func (a *App) handleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "state mismatch: login did not start here", http.StatusBadRequest)
 		return
 	}
-	ident, err := a.sdk.Exchange(r.Context(), query.Get("code"), a.redirectURI)
+	ident, err := a.exchangeURL.Exchange(r.Context(), query.Get("code"), a.redirectURI)
 	if err != nil {
 		http.Error(w, "exchange failed: "+err.Error(), http.StatusBadGateway)
 		return
