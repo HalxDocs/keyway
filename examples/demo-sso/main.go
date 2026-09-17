@@ -22,11 +22,14 @@ import (
 
 // App serves one tenant's login loop. The SDK client owns Keyway URL
 // handling; tenantID and redirectURI must match the tenant's allowlist or
-// Keyway refuses /authorize before any IdP is involved.
+// Keyway refuses /authorize before any IdP is involved. connectionID picks
+// the IdP and is required when the tenant has more than one active
+// connection; it stays empty for single-connection tenants.
 type App struct {
-	sdk         *client.Client
-	tenantID    string
-	redirectURI string
+	sdk          *client.Client
+	tenantID     string
+	redirectURI  string
+	connectionID string
 }
 
 func main() {
@@ -34,6 +37,7 @@ func main() {
 	addr := flag.String("addr", "127.0.0.1:3000", "listen address")
 	tenantID := flag.String("tenant", "acme", "Keyway tenant handle")
 	redirectURI := flag.String("redirect", "http://localhost:3000/callback", "app callback URL (must be allowlisted)")
+	connectionID := flag.String("connection", "", "connection ID (required when the tenant has several active connections)")
 	flag.Parse()
 
 	sdk, err := client.New(*keywayURL)
@@ -41,7 +45,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "demo-sso:", err)
 		os.Exit(1)
 	}
-	app := &App{sdk: sdk, tenantID: *tenantID, redirectURI: *redirectURI}
+	app := &App{sdk: sdk, tenantID: *tenantID, redirectURI: *redirectURI, connectionID: *connectionID}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", app.handleHome)
 	mux.HandleFunc("GET /callback", app.handleCallback)
@@ -61,7 +65,7 @@ func (a *App) handleHome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "cannot start login", http.StatusInternalServerError)
 		return
 	}
-	loginURL, err := a.sdk.AuthURL(a.tenantID, a.redirectURI, state, "")
+	loginURL, err := a.sdk.AuthURL(a.tenantID, a.redirectURI, state, a.connectionID)
 	if err != nil {
 		http.Error(w, "cannot start login", http.StatusInternalServerError)
 		return

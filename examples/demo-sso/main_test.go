@@ -63,3 +63,16 @@ func TestCallbackRejectsMissingCookie(t *testing.T) {
 		t.Errorf("status = %d, want 400", rec.Code)
 	}
 }
+
+func TestHomeIncludesConnectionWhenSet(t *testing.T) {
+	app := testApp(t)
+	app.connectionID = "conn-saml-1"
+	rec := httptest.NewRecorder()
+	app.handleHome(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, "connection=conn-saml-1") {
+		t.Errorf("home page login link carries no connection ID: %q", body)
+	}
+}
