@@ -58,6 +58,7 @@ curl -X POST http://127.0.0.1:8080/token \
 | `keyway start` | Serve flow + admin API (`--addr`, `--db`, `--base-url`, `--sp-entity-id`, `--sp-key`, `--sp-cert`) |
 | `keyway keygen` | Print a fresh master key for `KEYWAY_MASTER_KEY` |
 | `keyway tenant create\|list` | Provision and inspect customers |
+| `keyway tenant redirect add\|remove` | Allowlist or drop app callback URLs |
 | `keyway connection add\|list\|delete\|test\|activate` | Register, inspect, remove, dry-run, approve IdPs |
 | `keyway status` | Tenant/connection counts and DB size |
 

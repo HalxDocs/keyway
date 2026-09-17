@@ -6,13 +6,16 @@ import (
 	"strings"
 
 	"keyway/internal/cli"
+	"keyway/internal/flow"
 )
 
 func runTenant(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: keyway tenant <create|list>")
+		return fmt.Errorf("usage: keyway tenant <create|list|redirect>")
 	}
 	switch args[0] {
+	case "redirect":
+		return runTenantRedirect(args[1:])
 	case "create":
 		fs := flag.NewFlagSet("tenant create", flag.ContinueOnError)
 		db := dbPath(fs)
@@ -57,4 +60,42 @@ func runTenant(args []string) error {
 	default:
 		return fmt.Errorf("unknown tenant subcommand %q", args[0])
 	}
+}
+
+func runTenantRedirect(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("usage: keyway tenant redirect <add|remove>")
+	}
+	var run func(store interface {
+	}, tenantID, uri string) (string, error)
+	_ = run
+	switch args[0] {
+	case "add":
+		return runTenantRedirectChange(args[1:], cli.TenantRedirectAdd)
+	case "remove":
+		return runTenantRedirectChange(args[1:], cli.TenantRedirectRemove)
+	default:
+		return fmt.Errorf("unknown tenant redirect subcommand %q", args[0])
+	}
+}
+
+func runTenantRedirectChange(args []string, change func(flow.Storage, string, string) (string, error)) error {
+	fs := flag.NewFlagSet("tenant redirect", flag.ContinueOnError)
+	db := dbPath(fs)
+	tenantID := fs.String("id", "", "tenant handle")
+	uri := fs.String("uri", "", "callback URL to allowlist or remove")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	store, err := cli.OpenStore(*db)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	out, err := change(store, *tenantID, *uri)
+	if err != nil {
+		return err
+	}
+	fmt.Println(out)
+	return nil
 }
