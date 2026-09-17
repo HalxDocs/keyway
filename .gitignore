@@ -1,6 +1,7 @@
 # Local build output — single static binary, built per machine.
 /keyway
 /keyway.exe
+/keyway.exe~
 
 # Local operator state — sealed secrets + throwaway test tenants.
 *.db
