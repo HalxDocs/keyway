@@ -98,6 +98,13 @@ go run ./examples/demo-sso
 # open http://localhost:3000 and click Log in with SSO
 ```
 
+With several active connections on one tenant, point the demo at one
+explicitly (otherwise `/authorize` refuses to guess):
+
+```sh
+go run ./examples/demo-sso --connection conn-<id>
+```
+
 ## Security notes
 
 - SAML signatures verified against IdP metadata on every response;
