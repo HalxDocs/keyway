@@ -1,0 +1,55 @@
+# Local dev stack: Keyway + demo app. Secrets come from `.env` (see
+# `.env.example`); the SQLite file lives in the named volume; the SP
+# signing key/cert are bind-mounted read-only from the repo root.
+#
+# NOTE on --addr: inside a container localhost means the container itself,
+# so both services must listen on 0.0.0.0. --base-url stays a loopback URL
+# here because the browser resolves it on the host, where ports are
+# published. For a public host, use docker-compose.prod.yml instead.
+services:
+  keyway:
+    build: .
+    image: keyway:local
+    env_file:
+      - .env
+    command:
+      - start
+      - --addr=0.0.0.0:8080
+      - --db=/data/keyway.db
+      - --base-url=${KEYWAY_BASE_URL:-http://127.0.0.1:8080}
+      - --sp-key=/data/sp.key
+      - --sp-cert=/data/sp.crt
+    ports:
+      - "8080:8080"
+    volumes:
+      - keyway-data:/data
+      - ./sp.key:/data/sp.key:ro
+      - ./sp.crt:/data/sp.crt:ro
+    restart: unless-stopped
+    healthcheck:
+      # Shell-free probe (the image is scratch): status exits 0 only when
+      # the binary, master key, and SQLite file all work together.
+      test: ["CMD", "/keyway", "status", "--db", "/data/keyway.db"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  demo:
+    image: keyway:local
+    entrypoint: ["/demo-sso"]
+    command:
+      - --keyway=http://keyway:8080
+      - --addr=0.0.0.0:3000
+      - --tenant=${DEMO_TENANT:-acme}
+      - --redirect=${DEMO_REDIRECT:-http://localhost:3000/callback}
+      - --connection=${DEMO_CONNECTION_ID:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      keyway:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  keyway-data:
