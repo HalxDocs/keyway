@@ -160,8 +160,12 @@ dependency-free liveness probe for orchestrators.
 - OIDC secrets sealed at rest (AES-256-GCM); no key rotation in v1.
 - `redirect_uri` allowlisted per tenant; login outcomes logged, assertions
   and tokens never logged.
-- Admin API has no token in v1 — it binds localhost by default; do not
-  expose it beyond loopback without a proxy in front.
+- Admin API (`/admin/*`) takes a static bearer token via `--admin-token`
+  / `KEYWAY_ADMIN_TOKEN`, enforced in code with constant-time comparison.
+  Empty means open: acceptable for localhost dev behind loopback-bound
+  ports, never for production. prod compose fails fast without the token,
+  and Caddy answers `/admin/*` with 404 at the public edge regardless —
+  both layers must agree before admin is reachable.
 - Stable SP identity: generate `sp.key`/`sp.crt` once per deployment and
   pass `--sp-key`/`--sp-cert` to `keyway start`; without them the server
   mints an ephemeral identity on every boot. Keep the key `0600` and out
