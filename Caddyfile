@@ -4,7 +4,15 @@
 # deployment-specific names. HTTP-01 challenges need ports 80/443 reachable
 # from the internet; the app ports stay loopback-bound (see compose base).
 {$KEYWAY_HOST} {
-	reverse_proxy keyway:8080
+	# The admin API never crosses the public edge: it stays reachable via
+	# the token on localhost/direct access, but Caddy answers 404 here so a
+	# missing token can never silently mean internet-exposed admin.
+	handle /admin/* {
+		respond "Not Found" 404
+	}
+	handle {
+		reverse_proxy keyway:8080
+	}
 }
 
 {$DEMO_HOST} {

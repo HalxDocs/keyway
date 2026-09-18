@@ -6,6 +6,7 @@
 #   KEYWAY_BASE_URL=https://sso.example.com \
 #   DEMO_REDIRECT=https://app.example.com/callback \
 #   KEYWAY_HOST=sso.example.com DEMO_HOST=app.example.com \
+#   KEYWAY_ADMIN_TOKEN=$(openssl rand -hex 32) \
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #
 # After switching base URL, every connection's callback URL changes with
@@ -28,6 +29,13 @@ services:
       - keyway
       - demo
     restart: unless-stopped
+
+  keyway:
+    environment:
+      # Fail fast without an admin token: with Caddy refusing /admin/* at
+      # the edge AND the token enforced in code, a missing token can never
+      # silently mean internet-exposed admin.
+      - KEYWAY_ADMIN_TOKEN=${KEYWAY_ADMIN_TOKEN:?KEYWAY_ADMIN_TOKEN is required in prod}
 
 volumes:
   caddy-data:
