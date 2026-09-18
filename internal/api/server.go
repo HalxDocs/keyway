@@ -78,6 +78,8 @@ func (s *Server) Routes() *http.ServeMux {
 	mux.HandleFunc("GET /admin/tenants/{tenantID}/connections", s.requireAdmin(s.handleAdminListConnections))
 	mux.HandleFunc("DELETE /admin/connections/{connectionID}", s.requireAdmin(s.handleAdminDeleteConnection))
 	mux.HandleFunc("POST /admin/connections/{connectionID}/test", s.requireAdmin(s.handleAdminTestConnection))
+	mux.HandleFunc("POST /admin/connections/{connectionID}/activate", s.requireAdmin(s.handleAdminActivateConnection))
+	mux.HandleFunc("POST /admin/connections/{connectionID}/disable", s.requireAdmin(s.handleAdminDisableConnection))
 	return mux
 }
 

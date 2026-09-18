@@ -143,3 +143,45 @@ func (s *Server) handleAdminTestConnection(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
+
+// handleAdminActivateConnection approves one connection for logins. The
+// legal transitions live on the domain type, shared with the CLI, so this
+// handler only fetches, persists, and responds with the updated record.
+func (s *Server) handleAdminActivateConnection(w http.ResponseWriter, r *http.Request) {
+	s.changeConnectionStatus(w, r, "activate",
+		func(c connection.Connection) (connection.Connection, error) { return c.Activate() })
+}
+
+// handleAdminDisableConnection takes one connection out of login service
+// without deleting its config. Same shape as activate: domain decides,
+// handler persists and responds.
+func (s *Server) handleAdminDisableConnection(w http.ResponseWriter, r *http.Request) {
+	s.changeConnectionStatus(w, r, "disable",
+		func(c connection.Connection) (connection.Connection, error) { return c.Disable() })
+}
+
+func (s *Server) changeConnectionStatus(w http.ResponseWriter, r *http.Request, op string,
+	transition func(connection.Connection) (connection.Connection, error)) {
+	connectionID := r.PathValue("connectionID")
+	conn, err := s.store.GetConnection(r.Context(), connectionID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "unknown_connection", "no such connection")
+		return
+	}
+	next, err := transition(conn)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		return
+	}
+	if next.Status != conn.Status {
+		if err := s.store.UpdateConnectionStatus(r.Context(), connectionID, next.Status); err != nil {
+			s.log.Info("admin", "op", op+"-connection", "result", "error", "err", err)
+			writeError(w, http.StatusInternalServerError, "storage_error", err.Error())
+			return
+		}
+		s.flow.Invalidate(connectionID)
+	}
+	s.log.Info("admin", "op", op+"-connection", "result", "ok")
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(toConnectionResponse(next))
+}
