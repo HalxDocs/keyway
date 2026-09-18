@@ -174,3 +174,51 @@ func TestConnectionActivate(t *testing.T) {
 		t.Errorf("activate disabled: expected rejection, got nil error")
 	}
 }
+
+func TestConnectionDisable(t *testing.T) {
+	store := testCLIStore(t)
+	ctx := context.Background()
+	if err := store.CreateTenant(ctx, tenant.Tenant{ID: "acme", Name: "Acme", CreatedAt: time.Now()}); err != nil {
+		t.Fatalf("CreateTenant: %v", err)
+	}
+	if _, err := ConnectionAdd(store, ConnectionAddParams{TenantID: "acme",
+		Type: connection.ConnectionTypeOIDC, IssuerURL: "https://issuer.test",
+		ClientID: "c1", EmailClaim: "email"}); err != nil {
+		t.Fatalf("ConnectionAdd: %v", err)
+	}
+	conns, err := store.ListConnectionsByTenant(ctx, "acme")
+	if err != nil || len(conns) != 1 {
+		t.Fatalf("ListConnectionsByTenant = %v, %v; want 1 connection", conns, err)
+	}
+	connID := conns[0].ID
+	if _, err := ConnectionDisable(store, connID); err == nil {
+		t.Errorf("disable untested: expected rejection, got nil error")
+	}
+	if _, err := ConnectionActivate(store, connID); err != nil {
+		t.Fatalf("ConnectionActivate: %v", err)
+	}
+	disabled, err := ConnectionDisable(store, connID)
+	if err != nil {
+		t.Fatalf("ConnectionDisable: %v", err)
+	}
+	if !strings.Contains(disabled, "disabled") {
+		t.Errorf("output = %q", disabled)
+	}
+	got, err := store.GetConnection(ctx, connID)
+	if err != nil {
+		t.Fatalf("GetConnection: %v", err)
+	}
+	if got.Status != connection.ConnectionStatusDisabled {
+		t.Errorf("status = %q, want disabled", got.Status)
+	}
+	again, err := ConnectionDisable(store, connID)
+	if err != nil {
+		t.Fatalf("re-disable: %v", err)
+	}
+	if !strings.Contains(again, "already disabled") {
+		t.Errorf("output = %q", again)
+	}
+	if _, err := ConnectionDisable(store, "nope"); err == nil {
+		t.Errorf("disable unknown: expected rejection, got nil error")
+	}
+}

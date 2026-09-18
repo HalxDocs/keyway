@@ -105,6 +105,31 @@ func ConnectionActivate(store flow.Storage, id string) (string, error) {
 	return fmt.Sprintf("connection %q activated", id), nil
 }
 
+// ConnectionDisable takes one connection out of login service without
+// deleting its config, e.g. after an incident or key rotation. Only active
+// connections may be disabled: untested ones already refuse logins, so
+// disabling them would be noise. Re-disabling succeeds idempotently, and
+// re-enabling is deliberately absent — a disabled connection returns via a
+// fresh test plus activate, never a silent flip.
+func ConnectionDisable(store flow.Storage, id string) (string, error) {
+	ctx := context.Background()
+	conn, err := store.GetConnection(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("cli: connection disable: %w", err)
+	}
+	switch conn.Status {
+	case connection.ConnectionStatusDisabled:
+		return fmt.Sprintf("connection %q already disabled", id), nil
+	case connection.ConnectionStatusActive:
+	default:
+		return "", fmt.Errorf("cli: connection disable: connection %q is %q, not active", id, conn.Status)
+	}
+	if err := store.UpdateConnectionStatus(ctx, id, connection.ConnectionStatusDisabled); err != nil {
+		return "", fmt.Errorf("cli: connection disable: %w", err)
+	}
+	return fmt.Sprintf("connection %q disabled", id), nil
+}
+
 func newConnID() (string, error) {
 	raw := make([]byte, 8)
 	if _, err := rand.Read(raw); err != nil {
