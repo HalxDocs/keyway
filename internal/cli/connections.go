@@ -81,51 +81,46 @@ func ConnectionDelete(store flow.Storage, id string) (string, error) {
 	}
 	return fmt.Sprintf("connection %q deleted", id), nil
 }
-// ConnectionActivate approves one connection for logins from either the
-// untested creation state or the disabled incident state: both transitions
-// are explicit operator approvals, typically run right after a passing
-// connection test. Activating an already-active connection succeeds
-// idempotently. There is deliberately no path back to untested, so a tested
-// connection can never silently regress to pre-test state.
+// ConnectionActivate approves one connection for logins. The legal states
+// live on the domain transition; this function only fetches, persists, and
+// reports, so its messages stay identical while the rules cannot drift from
+// the admin API's.
 func ConnectionActivate(store flow.Storage, id string) (string, error) {
 	ctx := context.Background()
 	conn, err := store.GetConnection(ctx, id)
 	if err != nil {
 		return "", fmt.Errorf("cli: connection activate: %w", err)
 	}
-	if conn.Status == connection.ConnectionStatusActive {
+	next, err := conn.Activate()
+	if err != nil {
+		return "", fmt.Errorf("cli: connection activate: %w", err)
+	}
+	if next.Status == conn.Status {
 		return fmt.Sprintf("connection %q already active", id), nil
 	}
-	switch conn.Status {
-	case connection.ConnectionStatusUntested, connection.ConnectionStatusDisabled:
-	default:
-		return "", fmt.Errorf("cli: connection activate: connection %q has unknown status %q", id, conn.Status)
-	}
-	if err := store.UpdateConnectionStatus(ctx, id, connection.ConnectionStatusActive); err != nil {
+	if err := store.UpdateConnectionStatus(ctx, id, next.Status); err != nil {
 		return "", fmt.Errorf("cli: connection activate: %w", err)
 	}
 	return fmt.Sprintf("connection %q activated", id), nil
 }
 
 // ConnectionDisable takes one connection out of login service without
-// deleting its config, e.g. after an incident or key rotation. Only active
-// connections may be disabled: untested ones already refuse logins, so
-// disabling them would be noise. Re-disabling succeeds idempotently, and
-// re-enabling goes through activate (test first, then approve).
+// deleting its config. Like activate, the legal states live on the domain
+// transition; this function only fetches, persists, and reports.
 func ConnectionDisable(store flow.Storage, id string) (string, error) {
 	ctx := context.Background()
 	conn, err := store.GetConnection(ctx, id)
 	if err != nil {
 		return "", fmt.Errorf("cli: connection disable: %w", err)
 	}
-	switch conn.Status {
-	case connection.ConnectionStatusDisabled:
-		return fmt.Sprintf("connection %q already disabled", id), nil
-	case connection.ConnectionStatusActive:
-	default:
-		return "", fmt.Errorf("cli: connection disable: connection %q is %q, not active", id, conn.Status)
+	next, err := conn.Disable()
+	if err != nil {
+		return "", fmt.Errorf("cli: connection disable: %w", err)
 	}
-	if err := store.UpdateConnectionStatus(ctx, id, connection.ConnectionStatusDisabled); err != nil {
+	if next.Status == conn.Status {
+		return fmt.Sprintf("connection %q already disabled", id), nil
+	}
+	if err := store.UpdateConnectionStatus(ctx, id, next.Status); err != nil {
 		return "", fmt.Errorf("cli: connection disable: %w", err)
 	}
 	return fmt.Sprintf("connection %q disabled", id), nil
