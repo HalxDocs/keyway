@@ -14,7 +14,8 @@ import (
 
 // StartParams configures one server run. SPEntityID defaults to BaseURL
 // when blank; SPKeyPath/SPCertPath both blank means an ephemeral identity
-// with a loud warning, never a silent one.
+// with a loud warning, never a silent one. Empty AdminToken leaves /admin/*
+// open: the localhost-dev posture, never the production one.
 type StartParams struct {
 	Addr       string
 	DBPath     string
@@ -22,6 +23,7 @@ type StartParams struct {
 	SPEntityID string
 	SPKeyPath  string
 	SPCertPath string
+	AdminToken string
 }
 
 // Start opens storage, builds the flow orchestrator and HTTP routes, and
@@ -53,7 +55,7 @@ func Start(params StartParams) error {
 	if err != nil {
 		return err
 	}
-	server, err := api.NewServer(svc, store, slog.Default())
+	server, err := api.NewServer(svc, store, slog.Default(), api.WithAdminToken(params.AdminToken))
 	if err != nil {
 		return err
 	}

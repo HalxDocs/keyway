@@ -54,11 +54,12 @@ func runStart(args []string) error {
 	entityID := fs.String("sp-entity-id", "", "SP entity ID (defaults to base URL)")
 	keyPath := fs.String("sp-key", "", "SP signing key PEM file")
 	certPath := fs.String("sp-cert", "", "SP certificate PEM file")
+	adminToken := fs.String("admin-token", os.Getenv("KEYWAY_ADMIN_TOKEN"), "static bearer token for /admin/* (or KEYWAY_ADMIN_TOKEN)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	return cli.Start(cli.StartParams{Addr: *addr, DBPath: *db, BaseURL: *baseURL,
-		SPEntityID: *entityID, SPKeyPath: *keyPath, SPCertPath: *certPath})
+		SPEntityID: *entityID, SPKeyPath: *keyPath, SPCertPath: *certPath, AdminToken: *adminToken})
 }
 
 func runStatus(args []string) error {
