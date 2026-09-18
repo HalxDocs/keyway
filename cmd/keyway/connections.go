@@ -11,7 +11,7 @@ import (
 
 func runConnection(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: keyway connection <add|list|delete|test|activate>")
+		return fmt.Errorf("usage: keyway connection <add|list|delete|test|activate|disable>")
 	}
 	switch args[0] {
 	case "add":
@@ -24,6 +24,8 @@ func runConnection(args []string) error {
 		return runConnectionTest(args[1:])
 	case "activate":
 		return runConnectionActivate(args[1:])
+	case "disable":
+		return runConnectionDisable(args[1:])
 	default:
 		return fmt.Errorf("unknown connection subcommand %q", args[0])
 	}
@@ -146,6 +148,26 @@ func runConnectionActivate(args []string) error {
 	}
 	defer store.Close()
 	out, err := cli.ConnectionActivate(store, *id)
+	if err != nil {
+		return err
+	}
+	fmt.Println(out)
+	return nil
+}
+
+func runConnectionDisable(args []string) error {
+	fs := flag.NewFlagSet("connection disable", flag.ContinueOnError)
+	db := dbPath(fs)
+	id := fs.String("id", "", "connection ID")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	store, err := cli.OpenStore(*db)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	out, err := cli.ConnectionDisable(store, *id)
 	if err != nil {
 		return err
 	}
