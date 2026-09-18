@@ -63,7 +63,7 @@ curl -X POST http://127.0.0.1:8080/token \
 | `keyway status` | Tenant/connection counts and DB size |
 
 Admin API mirrors the CLI at `/admin/*` (tenants, connections, `POST
-/admin/connections/{id}/test`). Connection responses never include secrets.
+/admin/connections/{id}/test|activate|disable`). Connection responses never include secrets.
 
 ## Tested with Auth0
 
