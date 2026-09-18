@@ -22,13 +22,28 @@ import (
 // (records, not logins) plus the orchestrator for cache invalidation and
 // connection testing.
 type Server struct {
-	flow  *flow.Service
-	store flow.Storage
-	log   *slog.Logger
+	flow       *flow.Service
+	store      flow.Storage
+	log        *slog.Logger
+	adminToken string
+}
+
+// ServerOption customizes a Server. Only WithAdminToken is exposed today
+// to keep the surface small and obvious to a stranger reading one file.
+type ServerOption func(*Server)
+
+// WithAdminToken requires a static bearer token on every /admin/* route.
+// An empty token leaves admin open: that is the localhost-dev posture and
+// must never be the production posture — the prod compose overlay fails
+// fast when KEYWAY_ADMIN_TOKEN is unset, and Caddy refuses /admin/* at the
+// edge regardless, so a missing token can never silently mean
+// internet-exposed admin.
+func WithAdminToken(token string) ServerOption {
+	return func(s *Server) { s.adminToken = token }
 }
 
 // NewServer builds the HTTP server over one flow orchestrator and its store.
-func NewServer(flowSvc *flow.Service, store flow.Storage, logger *slog.Logger) (*Server, error) {
+func NewServer(flowSvc *flow.Service, store flow.Storage, logger *slog.Logger, opts ...ServerOption) (*Server, error) {
 	if flowSvc == nil {
 		return nil, fmt.Errorf("api: new server: flow service is required")
 	}
@@ -38,7 +53,11 @@ func NewServer(flowSvc *flow.Service, store flow.Storage, logger *slog.Logger) (
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Server{flow: flowSvc, store: store, log: logger}, nil
+	s := &Server{flow: flowSvc, store: store, log: logger}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s, nil
 }
 
 // Routes wires the flow and admin endpoints onto a stdlib multiplexer.
@@ -53,12 +72,12 @@ func (s *Server) Routes() *http.ServeMux {
 	mux.HandleFunc("POST /callback/saml/{connectionID}", s.handleSAMLCallback)
 	mux.HandleFunc("POST /token", s.handleToken)
 	mux.HandleFunc("GET /saml/metadata/{connectionID}", s.handleSPMetadata)
-	mux.HandleFunc("POST /admin/tenants", s.handleAdminCreateTenant)
-	mux.HandleFunc("GET /admin/tenants", s.handleAdminListTenants)
-	mux.HandleFunc("POST /admin/tenants/{tenantID}/connections", s.handleAdminCreateConnection)
-	mux.HandleFunc("GET /admin/tenants/{tenantID}/connections", s.handleAdminListConnections)
-	mux.HandleFunc("DELETE /admin/connections/{connectionID}", s.handleAdminDeleteConnection)
-	mux.HandleFunc("POST /admin/connections/{connectionID}/test", s.handleAdminTestConnection)
+	mux.HandleFunc("POST /admin/tenants", s.requireAdmin(s.handleAdminCreateTenant))
+	mux.HandleFunc("GET /admin/tenants", s.requireAdmin(s.handleAdminListTenants))
+	mux.HandleFunc("POST /admin/tenants/{tenantID}/connections", s.requireAdmin(s.handleAdminCreateConnection))
+	mux.HandleFunc("GET /admin/tenants/{tenantID}/connections", s.requireAdmin(s.handleAdminListConnections))
+	mux.HandleFunc("DELETE /admin/connections/{connectionID}", s.requireAdmin(s.handleAdminDeleteConnection))
+	mux.HandleFunc("POST /admin/connections/{connectionID}/test", s.requireAdmin(s.handleAdminTestConnection))
 	return mux
 }
 
