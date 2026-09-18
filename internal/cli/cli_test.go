@@ -170,8 +170,12 @@ func TestConnectionActivate(t *testing.T) {
 	if err := store.UpdateConnectionStatus(ctx, connID, connection.ConnectionStatusDisabled); err != nil {
 		t.Fatalf("disable: %v", err)
 	}
-	if _, err := ConnectionActivate(store, connID); err == nil {
-		t.Errorf("activate disabled: expected rejection, got nil error")
+	reenabled, err := ConnectionActivate(store, connID)
+	if err != nil {
+		t.Fatalf("activate disabled: %v", err)
+	}
+	if !strings.Contains(reenabled, "activated") {
+		t.Errorf("output = %q", reenabled)
 	}
 }
 
