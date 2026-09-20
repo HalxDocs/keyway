@@ -24,12 +24,16 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$RepoRoot = (Split-Path -Parent $PSScriptRoot),
+  [string]$RepoRoot = "",
   [string]$TunnelLog8080 = "C:\Users\USER\AppData\Local\Temp\opencode\tun8080.log",
   [string]$TunnelLog3000 = "C:\Users\USER\AppData\Local\Temp\opencode\tun3000.log"
 )
 
 $ErrorActionPreference = "Stop"
+if (-not $RepoRoot) {
+  if ($PSScriptRoot) { $RepoRoot = Split-Path -Parent $PSScriptRoot }
+  else { $RepoRoot = (Get-Location).Path }
+}
 Set-Location -LiteralPath $RepoRoot
 
 function Get-TunnelUrl([string]$log) {
