@@ -151,6 +151,36 @@ A new base URL changes every connection's callback URL, so add the new
 Allowed Callback URLs plus the SAML2 addon callback). `GET /healthz` is a
 dependency-free liveness probe for orchestrators.
 
+## Railway ($0 trial, no card — then $1/mo free credit)
+
+Railway fits this stack well: it builds the `Dockerfile` natively, its free
+`*.up.railway.app` domains come with valid TLS (no Caddy needed), and a
+0.5 GB volume holds the SQLite file with room to spare. Trial = $5 for 30
+days, no card; after that the Free plan gives $1/mo credit, which covers
+two near-idle Go services at this scale — watch the usage page, and note
+trial volumes are deleted 30 days after credits expire unless you upgrade.
+Two hard requirements: verify your GitHub account (`railway.com/verify`)
+or outbound HTTPS to Auth0 stays restricted, and generate **fresh**
+secrets — never reuse the dev master key or client secrets here.
+
+Setup (all values exact):
+- **Service `keyway`**: repo `HalxDocs/keyway`, builder Dockerfile,
+  start command
+  `/keyway start --addr=0.0.0.0:8080 --db=/data/keyway.db --base-url=https://<keyway-domain> --sp-key=/data/sp.key --sp-cert=/data/sp.crt`,
+  volume mounted at `/data`, healthcheck path `/healthz`. Env:
+  `KEYWAY_MASTER_KEY` (fresh, from `keyway keygen`),
+  `KEYWAY_ADMIN_TOKEN` (fresh, `openssl rand -hex 32`).
+- **Service `demo`**: same repo/image, start command
+  `/demo-sso --keyway=https://<keyway-domain> --keyway-internal=http://keyway.railway.internal:8080 --addr=0.0.0.0:3000 --tenant=acme --redirect=https://<demo-domain>/callback`
+  (append `--connection=conn-<id>` once several connections are active).
+  Env: none required.
+- **First boot**: generate `sp.key`/`sp.crt` once and place them in the
+  volume (Railway service shell), then provision over the public admin API
+  with the bearer token — tenant, connections, `test`, `activate` — exactly
+  mirroring the CLI quickstart. Then add the
+  `https://<keyway-domain>/callback/...` URLs in Auth0 and log in at the
+  demo domain.
+
 ## Free permanent hosting (this machine + tunnels, $0)
 
 No VM, no card, no domain: this PC stays on, Cloudflare quick tunnels
