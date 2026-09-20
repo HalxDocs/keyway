@@ -231,6 +231,21 @@ only change when a tunnel restarts, so one sync run after boot is enough
   mints an ephemeral identity on every boot. Keep the key `0600` and out
   of version control.
 
+## Policies
+
+- **License:** MIT — see `LICENSE`. Commercial use, modification, and
+  private forks allowed; no warranty, no liability.
+- **Security:** report vulnerabilities privately via GitHub Security
+  Advisories, never in public issues — see `SECURITY.md` for scope,
+  response expectations, and the documented v1 limitations.
+- **Support:** GitHub issues, best effort, no SLA — see `SUPPORT.md` for
+  what makes a good report and what is out of scope.
+- **Hosting model:** customers self-host by default; HalxDocs offers
+  managed single-tenant stacks; no shared multi-tenant hosting before the
+  v2 hardening listed there — see `docs/operator-models.md`.
+- **Contributing:** atomic conventional commits, tests for behavior
+  changes, small PRs — see `CONTRIBUTING.md`.
+
 ## Layout
 
 `internal/oidc`, `internal/saml` (only protocol-aware code) →
