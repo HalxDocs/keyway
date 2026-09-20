@@ -25,8 +25,11 @@ services:
       - "127.0.0.1:8080:8080"
     volumes:
       - keyway-data:/data
-      - ./sp.key:/data/sp.key:ro
-      - ./sp.crt:/data/sp.crt:ro
+      # Paths are env-driven so one repo serves many isolated customers:
+      # each customer dir (customers/<id>/) carries its own pair, selected
+      # with --env-file customers/<id>/.env (see scripts/new-customer.ps1).
+      - ${SP_KEY_PATH:-./sp.key}:/data/sp.key:ro
+      - ${SP_CERT_PATH:-./sp.crt}:/data/sp.crt:ro
     restart: unless-stopped
     healthcheck:
       # Shell-free probe (the image is scratch): status exits 0 only when
