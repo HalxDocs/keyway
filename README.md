@@ -151,6 +151,27 @@ A new base URL changes every connection's callback URL, so add the new
 Allowed Callback URLs plus the SAML2 addon callback). `GET /healthz` is a
 dependency-free liveness probe for orchestrators.
 
+## Free permanent hosting (this machine + tunnels, $0)
+
+No VM, no card, no domain: this PC stays on, Cloudflare quick tunnels
+(free, no account) publish `:8080`/`:3000` on public `https://` URLs, and
+`scripts/sync-public-urls.ps1` closes the loop after every reboot (tunnel
+hostnames rotate). It re-points `.env`, recreates the stack, re-allowists
+the demo callback, and — with `AUTH0_SYNC=true` plus M2M credentials
+(Management API, `update:clients` scope) — merges the new OIDC callback
+into the Auth0 app without dropping the old ones. The SAML2 addon has no
+stable API field, so the script prints the exact values to paste (~30s).
+
+```powershell
+# after any reboot (Docker Desktop up, tunnels running):
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\sync-public-urls.ps1
+```
+
+Boot persistence is three logon scheduled tasks: `docker compose up -d`
+(delayed 60s for the Docker daemon), plus one tunnel each for `:8080` and
+`:3000`. URLs only change when a tunnel restarts, so one sync run after
+boot is enough — the stack itself is unaffected by rotation.
+
 ## Security notes
 
 - SAML signatures verified against IdP metadata on every response;
