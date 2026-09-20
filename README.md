@@ -167,10 +167,10 @@ stable API field, so the script prints the exact values to paste (~30s).
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\sync-public-urls.ps1
 ```
 
-Boot persistence is three logon scheduled tasks: `docker compose up -d`
-(delayed 60s for the Docker daemon), plus one tunnel each for `:8080` and
-`:3000`. URLs only change when a tunnel restarts, so one sync run after
-boot is enough — the stack itself is unaffected by rotation.
+Boot persistence is a Startup batch file (no elevation needed): wait 60s
+for the Docker daemon, `docker compose up -d`, then both tunnels. URLs
+only change when a tunnel restarts, so one sync run after boot is enough
+— the stack itself is unaffected by rotation.
 
 ## Security notes
 
