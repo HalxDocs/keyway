@@ -91,6 +91,10 @@ OIDC discovery, `/authorize` redirect, hosted login, callback, and
 a login link, callback that verifies `state` and exchanges the code via
 `pkg/client`. Tenant `acme` already allowlists its callback URL.
 
+Client SDKs: **Go** (`pkg/client`) today; **JavaScript/TypeScript** and
+**Python** land this coming week with the same surface — build the
+authorize URL, redeem the code, get the normalized identity.
+
 ```sh
 ./keyway start --db ./keyway.db --base-url http://127.0.0.1:8080 \
   --sp-key ./sp.key --sp-cert ./sp.crt &
