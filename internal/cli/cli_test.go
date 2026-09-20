@@ -123,8 +123,33 @@ func TestConnectionAddValidates(t *testing.T) {
 	}
 }
 
-func TestConnectionActivate(t *testing.T) {
-	store := testCLIStore(t)
+func TestSPKeygen(t *testing.T) {
+	dir := t.TempDir()
+	keyPath := filepath.Join(dir, "sp.key")
+	certPath := filepath.Join(dir, "sp.crt")
+	out, err := SPKeygen(SPKeygenParams{KeyPath: keyPath, CertPath: certPath})
+	if err != nil {
+		t.Fatalf("SPKeygen: %v", err)
+	}
+	if !strings.Contains(out, "sp.key") {
+		t.Errorf("output = %q", out)
+	}
+	pair, err := LoadKeyPair(keyPath, certPath)
+	if err != nil {
+		t.Fatalf("LoadKeyPair on generated files: %v", err)
+	}
+	if pair.Ephemeral {
+		t.Errorf("generated pair reports ephemeral")
+	}
+	if _, err := SPKeygen(SPKeygenParams{KeyPath: keyPath, CertPath: certPath}); err == nil {
+		t.Errorf("overwrite: expected refusal, got nil error")
+	}
+	if _, err := SPKeygen(SPKeygenParams{}); err == nil {
+		t.Errorf("empty paths: expected rejection, got nil error")
+	}
+}
+
+func TestConnectionActivate(t *testing.T) {	store := testCLIStore(t)
 	ctx := context.Background()
 	if err := store.CreateTenant(ctx, tenant.Tenant{ID: "acme", Name: "Acme", CreatedAt: time.Now()}); err != nil {
 		t.Fatalf("CreateTenant: %v", err)

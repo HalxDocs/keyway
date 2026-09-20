@@ -23,7 +23,7 @@ func dbPath(fs *flag.FlagSet) *string {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: keyway <start|keygen|tenant|connection|status>")
+		return fmt.Errorf("usage: keyway <start|keygen|sp-keygen|tenant|connection|status>")
 	}
 	switch args[0] {
 	case "start":
@@ -35,6 +35,8 @@ func run(args []string) error {
 		}
 		fmt.Println(out)
 		return nil
+	case "sp-keygen":
+		return runSPKeygen(args[1:])
 	case "tenant":
 		return runTenant(args[1:])
 	case "connection":
@@ -62,8 +64,23 @@ func runStart(args []string) error {
 		SPEntityID: *entityID, SPKeyPath: *keyPath, SPCertPath: *certPath, AdminToken: *adminToken})
 }
 
-func runStatus(args []string) error {
-	fs := flag.NewFlagSet("status", flag.ContinueOnError)
+func runSPKeygen(args []string) error {
+	fs := flag.NewFlagSet("sp-keygen", flag.ContinueOnError)
+	keyPath := fs.String("key", "./sp.key", "output path for the PEM signing key")
+	certPath := fs.String("cert", "./sp.crt", "output path for the PEM certificate")
+	cn := fs.String("cn", "keyway-sp", "certificate Common Name")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	out, err := cli.SPKeygen(cli.SPKeygenParams{KeyPath: *keyPath, CertPath: *certPath, CN: *cn})
+	if err != nil {
+		return err
+	}
+	fmt.Println(out)
+	return nil
+}
+
+func runStatus(args []string) error {	fs := flag.NewFlagSet("status", flag.ContinueOnError)
 	db := dbPath(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
