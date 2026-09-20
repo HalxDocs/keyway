@@ -120,6 +120,15 @@ cp .env.example .env  # then set KEYWAY_MASTER_KEY (keyway keygen)
 docker compose up -d --build
 ```
 
+One isolated stack per customer (see `docs/operator-models.md`):
+`scripts/new-customer.ps1` scaffolds `customers/<id>/` with fresh secrets
+and its own ports — same files, separate volumes:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\new-customer.ps1 -CustomerId acme2 -KeywayPort 8081 -DemoPort 3001
+docker compose --env-file customers/acme2/.env -p keyway-acme2 up -d --build
+```
+
 Run admin commands against the container database (exec inherits the
 compose environment, including the master key from `.env`):
 
