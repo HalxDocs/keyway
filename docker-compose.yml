@@ -22,7 +22,9 @@ services:
     ports:
       # Loopback-bound: the browser reaches these on the host, but a
       # production VM exposes nothing directly — traffic goes via Caddy.
-      - "127.0.0.1:8080:8080"
+      # Port numbers are env-driven so parallel per-customer stacks
+      # (scripts/new-customer.ps1) don't collide on one machine.
+      - "127.0.0.1:${KEYWAY_PORT:-8080}:8080"
     volumes:
       - keyway-data:/data
       # Paths are env-driven so one repo serves many isolated customers:
@@ -57,7 +59,7 @@ services:
       - --redirect=${DEMO_REDIRECT:-http://localhost:3000/callback}
       - --connection=${DEMO_CONNECTION_ID:-}
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${DEMO_PORT:-3000}:3000"
     depends_on:
       keyway:
         condition: service_healthy
