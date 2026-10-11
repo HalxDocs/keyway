@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "keyway-sso"
+version = "0.1.0"
+description = "Python SDK for Keyway — one OAuth2-style login flow for SAML and OIDC."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "HalxDocs" }]
+keywords = ["sso", "saml", "oidc", "oauth2", "enterprise"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Internet",
+  "Topic :: Security",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/HalxDocs/keyway"
+Documentation = "https://github.com/HalxDocs/keyway/tree/master/sdks/python"
+Repository = "https://github.com/HalxDocs/keyway"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+keyway_sso = ["py.typed"]
