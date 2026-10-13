@@ -164,7 +164,16 @@ End-to-end login verified Sep 2026 against an Auth0 EU dev tenant: OIDC discover
 
 `examples/demo-sso` is the smallest Keyway-integrated app: home page with a login link, callback that verifies `state` and exchanges the code via `pkg/client`. Tenant `acme` already allowlists its callback URL.
 
-Client SDKs: **Go** (`pkg/client`) today; **JavaScript/TypeScript** and **Python** land this coming week with the same surface — build the authorize URL, redeem the code, get the normalized identity.
+Client SDKs — same surface everywhere (build the authorize URL, redeem the code, get the normalized identity):
+
+| Language | Package | Status |
+|---|---|---|
+| Go | `pkg/client` | built in |
+| JavaScript | `keyway-js` (`sdks/js`, tag `js-v0.1.0`) | npm publish soon |
+| TypeScript | `keyway-ts` (`sdks/ts`, tag `ts-v0.1.0`) | npm publish soon |
+| Python | `keyway-sso` (`sdks/python`, tag `py-v0.1.0`) | PyPI publish soon (`keyway` is taken there by an unrelated package) |
+
+Each SDK ships a dependency-free demo proving the loop, ported from `examples/demo-sso`.
 
 ```sh
 ./keyway start --db ./keyway.db --base-url http://127.0.0.1:8080 \

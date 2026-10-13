@@ -324,7 +324,7 @@ Story for a 5-year-old: one toy box with four drawers. `tenants` = which familie
 * **Config via env/flags (12-factor):** `KEYWAY_MASTER_KEY`, `KEYWAY_ADMIN_TOKEN`, `--addr --db --base-url --sp-key --sp-cert`. New `base-url` = new callback URLs → update IdP dashboard first.
 * **Logs tell outcomes, not secrets:** `authorize/callback/token` log `ok|error + tenant + op`, never tokens/assertions. `GET /healthz` touches no storage/adapters/IdPs (`api/health.go:8-14`) so Auth0 outages don't restart healthy containers.
 * **Test-before-you-trust:** `flow/conntest.go:10-18` builds the *real* adapter with the *real* SP identity (entityID+key+ACS) — OIDC runs live discovery, SAML parses metadata. `connection test` must pass before `activate` lets real users in.
-* **SDK does the fiddly bits:** `pkg/client/client.go` — `AuthURL(tenant,redirect,state,connection)` builds encoding correctly (AppState CSRF round-trip preserved), `Exchange(code,redirect)` POSTs form + decodes `{email,name,groups}` + rejects empty-email. Go today; TS/Python same surface next.
+* **SDK does the fiddly bits:** `pkg/client/client.go` — `AuthURL(tenant,redirect,state,connection)` builds encoding correctly (AppState CSRF round-trip preserved), `Exchange(code,redirect)` POSTs form + decodes `{email,name,groups}` + rejects empty-email. Same surface in every language now: Go (`pkg/client`), JS (`sdks/js`), TS (`sdks/ts`), Python (`sdks/python`).
 
 ```go
 // smallest real app (examples/demo-sso):
