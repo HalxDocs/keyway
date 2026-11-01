@@ -277,6 +277,8 @@ Boot persistence is a Startup batch file (no elevation needed): wait 60s for the
 
 ---
 
+[![Fund my work on FLOSSAfrica](https://flossafrica.com/badge.svg?theme=dark)](https://flossafrica.com/m/halxdocs?p=keyway)
+
 ## Policies
 
 - **License:** MIT — see `LICENSE`. Commercial use, modification, and private forks allowed; no warranty, no liability.
